@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  passwordHash     String         @map("password_hash")
+  firstName        String         @map("first_name")
+  lastName         String         @map("last_name")
+  phone            String?
+  avatarUrl        String?        @map("avatar_url")
+  role             UserRole       @default(CLIENT)
+  isActive         Boolean        @default(true) @map("is_active")
+  emailVerified    Boolean        @default(false) @map("email_verified")
+  lastLoginAt      DateTime?      @map("last_login_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  agent            AgentProfile?
+  clientProfile    ClientProfile?
+  favorites        Favorite[]
+  receivedMessages Message[]      @relation("ReceivedMessages")
+  sentMessages     Message[]      @relation("SentMessages")
+  notifications    Notification[]
+  refreshTokens    RefreshToken[]
+  reviews          Review[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model AgentProfile {
+  id              String        @id @default(cuid())
+  userId          String        @unique @map("user_id")
+  licenseNumber   String?       @unique @map("license_number")
+  company         String?
+  bio             String?
+  specialization  String?
+  yearsExperience Int           @default(0) @map("years_experience")
+  commissionRate  Float         @default(3.0) @map("commission_rate")
+  rating          Float         @default(0)
+  totalSales      Int           @default(0) @map("total_sales")
+  isVerified      Boolean       @default(false) @map("is_verified")
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  properties      Property[]
+  transactions    Transaction[]
+
+  @@map("agent_profiles")
+}
+
+model ClientProfile {
+  id                   String                   @id @default(cuid())
+  userId               String                   @unique @map("user_id")
+  preferredContact     String?                  @map("preferred_contact")
+  budget               Float?
+  notes                String?
+  appointments         Appointment[]
+  user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interestedProperties ClientPropertyInterest[]
+  transactions         Transaction[]
+
+  @@map("client_profiles")
+}
+
+model ClientPropertyInterest {
+  id         String        @id @default(cuid())
+  clientId   String        @map("client_id")
+  propertyId String        @map("property_id")
+  notes      String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+  client     ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, propertyId])
+  @@map("client_property_interests")
+}
+
+model Address {
+  id           String     @id @default(cuid())
+  street       String?
+  number       String?
+  city         String
+  state        String?
+  neighborhood String?
+  zipCode      String?    @map("zip_code")
+  country      String     @default("DO")
+  latitude     Float?
+  longitude    Float?
+  properties   Property[]
+
+  @@map("addresses")
+}
+
+model Property {
+  id            String                   @id @default(cuid())
+  title         String
+  slug          String                   @unique
+  description   String
+  price         Float
+  currency      String                   @default("USD")
+  status        PropertyStatus           @default(SALE)
+  condition     PropertyCondition        @default(USED)
+  listingStatus ListingStatus            @default(ACTIVE) @map("listing_status")
+  propertyType  String                   @map("property_type")
+  beds          Int                      @default(0)
+  baths         Int                      @default(0)
+  size          Float                    @default(0)
+  lotSize       Float?                   @map("lot_size")
+  yearBuilt     Int?                     @map("year_built")
+  parkingSpaces Int                      @default(0) @map("parking_spaces")
+  isFeatured    Boolean                  @default(false) @map("is_featured")
+  viewCount     Int                      @default(0) @map("view_count")
+  addressId     String                   @map("address_id")
+  agentId       String                   @map("agent_id")
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @updatedAt @map("updated_at")
+  appointments  Appointment[]
+  interests     ClientPropertyInterest[]
+  inquiries     ContactInquiry[]
+  favorites     Favorite[]
+  address       Address                  @relation(fields: [addressId], references: [id])
+  agent         AgentProfile             @relation(fields: [agentId], references: [id])
+  features      PropertyFeature[]
+  images        PropertyImage[]
+  reviews       Review[]
+  transactions  Transaction[]
+
+  @@index([status, listingStatus])
+  @@index([propertyType])
+  @@index([price])
+  @@index([agentId])
+  @@map("properties")
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  propertyId String   @map("property_id")
+  url        String
+  publicId   String?  @map("public_id")
+  altText    String?  @map("alt_text")
+  sortOrder  Int      @default(0) @map("sort_order")
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  createdAt  DateTime @default(now()) @map("created_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_images")
+}
+
+model PropertyFeature {
+  id         String   @id @default(cuid())
+  propertyId String   @map("property_id")
+  name       String
+  category   String   @default("general")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, name])
+  @@map("property_features")
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  propertyId String   @map("property_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("favorites")
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  propertyId  String            @map("property_id")
+  clientId    String            @map("client_id")
+  agentId     String            @map("agent_id")
+  scheduledAt DateTime          @map("scheduled_at")
+  endAt       DateTime?         @map("end_at")
+  status      AppointmentStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  agent       AgentProfile      @relation(fields: [agentId], references: [id])
+  client      ClientProfile     @relation(fields: [clientId], references: [id])
+  property    Property          @relation(fields: [propertyId], references: [id])
+
+  @@map("appointments")
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  propertyId  String          @map("property_id")
+  clientId    String          @map("client_id")
+  agentId     String          @map("agent_id")
+  type        TransactionType
+  amount      Float
+  currency    String          @default("USD")
+  description String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  payments    Payment[]
+  agent       AgentProfile    @relation(fields: [agentId], references: [id])
+  client      ClientProfile   @relation(fields: [clientId], references: [id])
+  property    Property        @relation(fields: [propertyId], references: [id])
+
+  @@map("transactions")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  transactionId String        @map("transaction_id")
+  amount        Float
+  currency      String        @default("USD")
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  reference     String?
+  receiptUrl    String?       @map("receipt_url")
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  transaction   Transaction   @relation(fields: [transactionId], references: [id])
+
+  @@map("payments")
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  senderId   String    @map("sender_id")
+  receiverId String    @map("receiver_id")
+  content    String
+  isRead     Boolean   @default(false) @map("is_read")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  receiver   User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender     User      @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([senderId, receiverId])
+  @@map("messages")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false) @map("is_read")
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  propertyId String   @map("property_id")
+  userId     String   @map("user_id")
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, userId])
+  @@map("reviews")
+}
+
+model ContactInquiry {
+  id         String        @id @default(cuid())
+  propertyId String?       @map("property_id")
+  firstName  String        @map("first_name")
+  lastName   String        @map("last_name")
+  email      String
+  phone      String?
+  subject    String?
+  message    String
+  status     InquiryStatus @default(NEW)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  property   Property?     @relation(fields: [propertyId], references: [id])
+
+  @@map("contact_inquiries")
+}
+
+enum UserRole {
+  ADMIN
+  AGENT
+  CLIENT
+}
+
+enum PropertyStatus {
+  SALE
+  RENT
+}
+
+enum PropertyCondition {
+  NEW
+  USED
+  UNDER_CONSTRUCTION
+}
+
+enum ListingStatus {
+  ACTIVE
+  INACTIVE
+  SOLD
+  RENTED
+  PENDING
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CREDIT_CARD
+  CHECK
+  FINANCING
+}
+
+enum TransactionType {
+  SALE
+  RENT
+  COMMISSION
+  DEPOSIT
+  REFUND
+}
+
+enum NotificationType {
+  APPOINTMENT
+  MESSAGE
+  PROPERTY_UPDATE
+  PAYMENT
+  SYSTEM
+  FAVORITE
+}
+
+enum InquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
