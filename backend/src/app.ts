@@ -3,7 +3,9 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import passport from "passport";
 import { env } from "./config/env";
+import { configurePassport } from "./config/passport";
 import routes from "./routes";
 import { errorHandler } from "./middlewares/error.middleware";
 
@@ -24,6 +26,10 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// ─── Passport OAuth ───
+configurePassport();
+app.use(passport.initialize());
 
 // ─── Logging ───
 if (env.NODE_ENV === "development") {

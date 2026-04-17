@@ -10,6 +10,8 @@ import inquiryRoutes from "./inquiry.routes";
 import transactionRoutes from "./transaction.routes";
 import reviewRoutes from "./review.routes";
 import dashboardRoutes from "./dashboard.routes";
+import analyticsRoutes from "./analytics.routes";
+import siteRoutes from "./site.routes";
 
 const router = Router();
 
@@ -24,5 +26,7 @@ router.use("/inquiries", inquiryRoutes);
 router.use("/transactions", transactionRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/dashboard", dashboardRoutes);
+router.use("/analytics", analyticsRoutes);
+router.use("/site", siteRoutes);
 
 export default router;

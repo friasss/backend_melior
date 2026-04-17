@@ -8,19 +8,22 @@ datasource db {
 }
 
 model User {
-  id               String         @id @default(cuid())
-  email            String         @unique
-  passwordHash     String         @map("password_hash")
-  firstName        String         @map("first_name")
-  lastName         String         @map("last_name")
-  phone            String?
-  avatarUrl        String?        @map("avatar_url")
-  role             UserRole       @default(CLIENT)
-  isActive         Boolean        @default(true) @map("is_active")
-  emailVerified    Boolean        @default(false) @map("email_verified")
-  lastLoginAt      DateTime?      @map("last_login_at")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  id                      String         @id @default(cuid())
+  email                   String         @unique
+  passwordHash            String?        @map("password_hash")
+  googleId                String?        @unique @map("google_id")
+  facebookId              String?        @unique @map("facebook_id")
+  firstName               String         @map("first_name")
+  lastName                String         @map("last_name")
+  phone                   String?
+  avatarUrl               String?        @map("avatar_url")
+  role                    UserRole       @default(CLIENT)
+  isActive                Boolean        @default(true) @map("is_active")
+  emailVerified           Boolean        @default(false) @map("email_verified")
+  needsProfileCompletion  Boolean        @default(false) @map("needs_profile_completion")
+  lastLoginAt             DateTime?      @map("last_login_at")
+  createdAt               DateTime       @default(now()) @map("created_at")
+  updatedAt               DateTime       @updatedAt @map("updated_at")
   agent            AgentProfile?
   clientProfile    ClientProfile?
   favorites        Favorite[]
@@ -371,4 +374,12 @@ enum InquiryStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+model PageView {
+  id        String   @id @default(uuid())
+  path      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("page_views")
 }

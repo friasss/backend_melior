@@ -7,6 +7,9 @@ import * as ctrl from "../controllers/property.controller";
 
 const router = Router();
 
+// Agent – own properties
+router.get("/mine", authenticate, authorize("AGENT", "ADMIN"), ctrl.getMyProperties);
+
 // Public
 router.get("/", validate(propertyQuerySchema, "query"), ctrl.getProperties);
 router.get("/featured", ctrl.getFeaturedProperties);
@@ -39,7 +42,23 @@ router.delete(
   ctrl.deleteProperty
 );
 
-// Images
+// Images – by URL (no Cloudinary required)
+router.post(
+  "/:id/images/urls",
+  authenticate,
+  authorize("AGENT", "ADMIN"),
+  ctrl.uploadPropertyImageUrls
+);
+
+// Replace all images in one shot (handles reorder + delete + recrop)
+router.put(
+  "/:id/images/urls",
+  authenticate,
+  authorize("AGENT", "ADMIN"),
+  ctrl.replacePropertyImageUrls
+);
+
+// Images – file upload (requires Cloudinary)
 router.post(
   "/:id/images",
   authenticate,

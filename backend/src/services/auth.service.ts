@@ -84,6 +84,10 @@ export class AuthService {
       throw ApiError.forbidden("Tu cuenta ha sido desactivada");
     }
 
+    if (!user.passwordHash) {
+      throw ApiError.unauthorized("Esta cuenta usa inicio de sesión social. Usa Google o Facebook.");
+    }
+
     const isValid = await bcrypt.compare(input.password, user.passwordHash);
     if (!isValid) {
       throw ApiError.unauthorized("Credenciales inválidas");
@@ -179,7 +183,7 @@ export class AuthService {
     return user;
   }
 
-  async updateProfile(userId: string, data: { firstName?: string; lastName?: string; phone?: string }) {
+  async updateProfile(userId: string, data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) {
     const user = await prisma.user.update({
       where: { id: userId },
       data,
@@ -195,6 +199,41 @@ export class AuthService {
       },
     });
     return user;
+  }
+
+  async loginOAuthUser(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.isActive) throw ApiError.unauthorized("Cuenta inactiva");
+
+    await prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
+
+    const tokens = await this.createTokens({ userId: user.id, role: user.role });
+    const { passwordHash, ...safeUser } = user as typeof user & { passwordHash?: string | null };
+    return { user: safeUser, ...tokens };
+  }
+
+  async completeProfile(
+    userId: string,
+    data: { firstName: string; lastName: string; phone?: string; role: "CLIENT" | "AGENT" }
+  ) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { agent: true, clientProfile: true } });
+    if (!user) throw ApiError.notFound("Usuario no encontrado");
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        role: data.role,
+        needsProfileCompletion: false,
+        ...(data.role === "AGENT" && !user.agent ? { agent: { create: { company: "Melior Properties" } } } : {}),
+        ...(data.role === "CLIENT" && !user.clientProfile ? { clientProfile: { create: {} } } : {}),
+      },
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true, avatarUrl: true, role: true, needsProfileCompletion: true },
+    });
+
+    return updated;
   }
 
   async updateAvatar(userId: string, avatarUrl: string) {

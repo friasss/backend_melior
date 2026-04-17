@@ -22,6 +22,16 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().default(""),
 
   BCRYPT_SALT_ROUNDS: z.coerce.number().default(12),
+
+  // OAuth — optional, OAuth routes disabled if missing
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
+  FACEBOOK_APP_ID: z.string().default(""),
+  FACEBOOK_APP_SECRET: z.string().default(""),
+
+  // Public URL of the API (used for OAuth callback URLs)
+  API_URL: z.string().default("http://localhost:4000"),
+  FRONTEND_URL: z.string().default("http://localhost:5173"),
 });
 
 const parsed = envSchema.safeParse(process.env);

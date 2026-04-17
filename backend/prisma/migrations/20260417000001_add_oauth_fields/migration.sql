@@ -1,0 +1,7 @@
+ALTER TABLE "users"
+  ADD COLUMN IF NOT EXISTS "google_id" TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS "facebook_id" TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS "needs_profile_completion" BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE "users"
+  ALTER COLUMN "password_hash" DROP NOT NULL;

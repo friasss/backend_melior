@@ -47,6 +47,31 @@ export const deletePropertyImage = asyncHandler(async (req: Request, res: Respon
   res.json({ success: true, message: "Imagen eliminada" });
 });
 
+export const uploadPropertyImageUrls = asyncHandler(async (req: Request, res: Response) => {
+  const { urls } = req.body as { urls: string[] };
+  if (!urls || urls.length === 0) {
+    res.status(400).json({ success: false, message: "Se requiere al menos una URL de imagen" });
+    return;
+  }
+  const images = await propertyService.addImageUrls(req.params.id, req.userId!, req.userRole!, urls);
+  res.status(201).json({ success: true, message: "Imágenes guardadas", data: images });
+});
+
+export const replacePropertyImageUrls = asyncHandler(async (req: Request, res: Response) => {
+  const { urls } = req.body as { urls: string[] };
+  if (!urls || urls.length === 0) {
+    res.status(400).json({ success: false, message: "Se requiere al menos una URL de imagen" });
+    return;
+  }
+  await propertyService.replaceImageUrls(req.params.id, req.userId!, req.userRole!, urls);
+  res.json({ success: true, message: "Imágenes actualizadas" });
+});
+
+export const getMyProperties = asyncHandler(async (req: Request, res: Response) => {
+  const properties = await propertyService.getMyProperties(req.userId!);
+  res.json({ success: true, data: properties });
+});
+
 export const getFeaturedProperties = asyncHandler(async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 6;
   const properties = await propertyService.getFeatured(limit);

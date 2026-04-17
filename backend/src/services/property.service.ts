@@ -251,6 +251,56 @@ export class PropertyService {
     return images;
   }
 
+  async replaceImageUrls(propertyId: string, userId: string, userRole: string, urls: string[]) {
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      include: { agent: true },
+    });
+    if (!property) throw ApiError.notFound("Propiedad no encontrada");
+    if (userRole !== "ADMIN" && property.agent.userId !== userId) {
+      throw ApiError.forbidden("No tienes permiso para editar esta propiedad");
+    }
+    return prisma.$transaction([
+      prisma.propertyImage.deleteMany({ where: { propertyId } }),
+      ...urls.map((url, i) =>
+        prisma.propertyImage.create({
+          data: {
+            propertyId,
+            url,
+            publicId: null,
+            sortOrder: i,
+            isPrimary: i === 0,
+          },
+        })
+      ),
+    ]);
+  }
+
+  async addImageUrls(propertyId: string, userId: string, userRole: string, urls: string[]) {
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      include: { agent: true, images: true },
+    });
+    if (!property) throw ApiError.notFound("Propiedad no encontrada");
+    if (userRole !== "ADMIN" && property.agent.userId !== userId) {
+      throw ApiError.forbidden("No tienes permiso para editar esta propiedad");
+    }
+    const maxOrder = property.images.reduce((max, img) => Math.max(max, img.sortOrder), -1);
+    return prisma.$transaction(
+      urls.map((url, i) =>
+        prisma.propertyImage.create({
+          data: {
+            propertyId,
+            url,
+            publicId: null,
+            sortOrder: maxOrder + 1 + i,
+            isPrimary: property.images.length === 0 && i === 0,
+          },
+        })
+      )
+    );
+  }
+
   async deleteImage(imageId: string, userId: string, userRole: string) {
     const image = await prisma.propertyImage.findUnique({
       where: { id: imageId },
@@ -267,6 +317,16 @@ export class PropertyService {
     }
 
     await prisma.propertyImage.delete({ where: { id: imageId } });
+  }
+
+  async getMyProperties(userId: string) {
+    const agent = await prisma.agentProfile.findUnique({ where: { userId } });
+    if (!agent) return [];
+    return prisma.property.findMany({
+      where: { agentId: agent.id },
+      include: PROPERTY_INCLUDE,
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   async getFeatured(limit = 6) {
