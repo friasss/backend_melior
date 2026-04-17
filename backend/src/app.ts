@@ -13,9 +13,23 @@ const app = express();
 
 // ─── Security ───
 app.use(helmet());
+const allowedOrigins = [
+  env.CLIENT_URL,
+  env.FRONTEND_URL,
+  /\.vercel\.app$/,
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
+
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowed = allowedOrigins.some((o) =>
+        typeof o === "string" ? o === origin : o.test(origin)
+      );
+      callback(allowed ? null : new Error("Not allowed by CORS"), allowed);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
