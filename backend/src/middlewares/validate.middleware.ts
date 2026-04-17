@@ -1,16 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import { AnyZodObject, ZodError } from "zod";
+import { ZodTypeAny, ZodError } from "zod";
 import { ApiError } from "../utils/ApiError";
 
-/**
- * Validates the specified request property (body | query | params) against a Zod schema.
- */
-export const validate = (schema: AnyZodObject, property: "body" | "query" | "params" = "body") => {
+export const validate = (schema: ZodTypeAny, property: "body" | "query" | "params" = "body") => {
   return (req: Request, _res: Response, next: NextFunction) => {
     try {
       const parsed = schema.parse(req[property]);
-      // Replace with parsed (coerced) values
-      (req as Record<string, unknown>)[property] = parsed;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (req as any)[property] = parsed;
       next();
     } catch (error) {
       if (error instanceof ZodError) {

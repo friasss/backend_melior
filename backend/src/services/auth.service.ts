@@ -8,15 +8,13 @@ import { RegisterInput, LoginInput, ChangePasswordInput } from "../schemas/auth.
 import { UserRole } from "@prisma/client";
 
 function generateAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRES_IN,
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_EXPIRES_IN as any });
 }
 
 function generateRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRES_IN,
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES_IN as any });
 }
 
 function parseExpiry(expiresIn: string): number {
@@ -88,7 +86,7 @@ export class AuthService {
       throw ApiError.unauthorized("Esta cuenta usa inicio de sesión social. Usa Google o Facebook.");
     }
 
-    const isValid = await bcrypt.compare(input.password, user.passwordHash);
+    const isValid = await bcrypt.compare(input.password, user.passwordHash!);
     if (!isValid) {
       throw ApiError.unauthorized("Credenciales inválidas");
     }
@@ -146,6 +144,7 @@ export class AuthService {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw ApiError.notFound("Usuario no encontrado");
 
+    if (!user.passwordHash) throw ApiError.badRequest("Esta cuenta usa inicio de sesión social.");
     const isValid = await bcrypt.compare(input.currentPassword, user.passwordHash);
     if (!isValid) throw ApiError.badRequest("La contraseña actual es incorrecta");
 

@@ -371,6 +371,7 @@ export class PropertyService {
         by: ["propertyType"],
         where: { listingStatus: "ACTIVE" },
         _count: true,
+        orderBy: { _count: { propertyType: "desc" } },
       }),
     ]);
 
