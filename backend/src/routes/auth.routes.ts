@@ -24,6 +24,25 @@ router.patch("/profile", authenticate, validate(updateProfileSchema), ctrl.updat
 router.patch("/password", authenticate, validate(changePasswordSchema), ctrl.changePassword);
 router.patch("/avatar", authenticate, upload.single("avatar"), ctrl.uploadAvatar);
 
+// Password reset with OTP code
+router.post("/forgot-password", async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) throw ApiError.badRequest("El correo es requerido");
+    await authService.requestPasswordReset(email);
+    res.json({ success: true, message: "Si el correo existe, recibirás un código en breve" });
+  } catch (err) { next(err); }
+});
+
+router.post("/reset-password", async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) throw ApiError.badRequest("Todos los campos son requeridos");
+    await authService.resetPasswordWithCode(email, code, newPassword);
+    res.json({ success: true, message: "Contraseña actualizada correctamente" });
+  } catch (err) { next(err); }
+});
+
 // Email verification
 router.get("/verify-email", async (req, res) => {
   try {

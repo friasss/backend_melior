@@ -22,6 +22,8 @@ model User {
   emailVerified              Boolean        @default(false) @map("email_verified")
   emailVerificationToken     String?        @map("email_verification_token")
   emailVerificationExpiresAt DateTime?      @map("email_verification_expires_at")
+  passwordResetCode          String?        @map("password_reset_code")
+  passwordResetExpiresAt     DateTime?      @map("password_reset_expires_at")
   needsProfileCompletion  Boolean        @default(false) @map("needs_profile_completion")
   lastLoginAt             DateTime?      @map("last_login_at")
   createdAt               DateTime       @default(now()) @map("created_at")

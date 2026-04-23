@@ -7,7 +7,7 @@ import { JwtPayload } from "../types";
 import { ApiError } from "../utils/ApiError";
 import { RegisterInput, LoginInput, ChangePasswordInput } from "../schemas/auth.schema";
 import { UserRole } from "@prisma/client";
-import { sendVerificationEmail } from "./email.service";
+import { sendVerificationEmail, sendPasswordResetCode } from "./email.service";
 
 function generateAccessToken(payload: JwtPayload): string {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,6 +93,44 @@ export class AuthService {
         emailVerificationExpiresAt: null,
       },
     });
+  }
+
+  async requestPasswordReset(email: string) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    // Always return success to avoid email enumeration
+    if (!user || !user.isActive) return;
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetCode: code, passwordResetExpiresAt: expiry },
+    });
+
+    await sendPasswordResetCode(user.email, user.firstName, code);
+  }
+
+  async resetPasswordWithCode(email: string, code: string, newPassword: string) {
+    if (newPassword.length < 8) throw ApiError.badRequest("La contraseña debe tener al menos 8 caracteres");
+    if (!/[A-Z]/.test(newPassword)) throw ApiError.badRequest("La contraseña debe tener al menos una letra mayúscula");
+    if (!/[0-9]/.test(newPassword)) throw ApiError.badRequest("La contraseña debe tener al menos un número");
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.passwordResetCode) throw ApiError.badRequest("Código inválido o expirado");
+    if (user.passwordResetCode !== code) throw ApiError.badRequest("El código es incorrecto");
+    if (user.passwordResetExpiresAt && user.passwordResetExpiresAt < new Date()) {
+      throw ApiError.badRequest("El código ha expirado. Solicita uno nuevo.");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, env.BCRYPT_SALT_ROUNDS);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, passwordResetCode: null, passwordResetExpiresAt: null },
+    });
+
+    // Invalidate all sessions
+    await this.logoutAll(user.id);
   }
 
   async resendVerification(userId: string) {
