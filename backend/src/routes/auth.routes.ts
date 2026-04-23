@@ -7,6 +7,7 @@ import { registerSchema, loginSchema, updateProfileSchema, changePasswordSchema 
 import * as ctrl from "../controllers/auth.controller";
 import { env } from "../config/env";
 import { authService } from "../services/auth.service";
+import { ApiError } from "../utils/ApiError";
 import { z } from "zod";
 
 const router = Router();
