@@ -1,11 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { env } from "../config/env";
 import { prisma } from "../config/database";
 import { JwtPayload } from "../types";
 import { ApiError } from "../utils/ApiError";
 import { RegisterInput, LoginInput, ChangePasswordInput } from "../schemas/auth.schema";
 import { UserRole } from "@prisma/client";
+import { sendVerificationEmail } from "./email.service";
 
 function generateAccessToken(payload: JwtPayload): string {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,6 +36,8 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_SALT_ROUNDS);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
     const user = await prisma.user.create({
       data: {
@@ -43,17 +47,13 @@ export class AuthService {
         lastName: input.lastName,
         phone: input.phone,
         role: input.role as UserRole,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpiresAt: verificationExpiry,
         ...(input.role === "AGENT" && {
-          agent: {
-            create: {
-              company: "Melior Properties",
-            },
-          },
+          agent: { create: { company: "Melior Properties" } },
         }),
         ...(input.role === "CLIENT" && {
-          clientProfile: {
-            create: {},
-          },
+          clientProfile: { create: {} },
         }),
       },
       select: {
@@ -63,13 +63,52 @@ export class AuthService {
         lastName: true,
         role: true,
         avatarUrl: true,
+        emailVerified: true,
         createdAt: true,
       },
     });
 
-    const tokens = await this.createTokens({ userId: user.id, role: user.role });
+    // Send verification email (non-blocking — don't fail registration if email fails)
+    sendVerificationEmail(user.email, user.firstName, verificationToken).catch(() => {});
 
+    const tokens = await this.createTokens({ userId: user.id, role: user.role });
     return { user, ...tokens };
+  }
+
+  async verifyEmail(token: string) {
+    const user = await prisma.user.findFirst({
+      where: { emailVerificationToken: token },
+    });
+    if (!user) throw ApiError.badRequest("Token de verificación inválido o ya usado");
+    if (user.emailVerified) throw ApiError.badRequest("El correo ya está verificado");
+    if (user.emailVerificationExpiresAt && user.emailVerificationExpiresAt < new Date()) {
+      throw ApiError.badRequest("El enlace de verificación ha expirado. Solicita uno nuevo.");
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+  }
+
+  async resendVerification(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw ApiError.notFound("Usuario no encontrado");
+    if (user.emailVerified) throw ApiError.badRequest("El correo ya está verificado");
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { emailVerificationToken: token, emailVerificationExpiresAt: expiry },
+    });
+
+    await sendVerificationEmail(user.email, user.firstName, token);
   }
 
   async login(input: LoginInput) {

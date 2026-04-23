@@ -24,6 +24,29 @@ router.patch("/profile", authenticate, validate(updateProfileSchema), ctrl.updat
 router.patch("/password", authenticate, validate(changePasswordSchema), ctrl.changePassword);
 router.patch("/avatar", authenticate, upload.single("avatar"), ctrl.uploadAvatar);
 
+// Email verification
+router.get("/verify-email", async (req, res, next) => {
+  try {
+    const token = req.query.token as string;
+    if (!token) throw new Error("Token requerido");
+    await authService.verifyEmail(token);
+    res.redirect(`${(await import("../config/env")).env.FRONTEND_URL}/verificar-email?success=true`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Error";
+    const { env } = await import("../config/env");
+    res.redirect(`${env.FRONTEND_URL}/verificar-email?error=${encodeURIComponent(msg)}`);
+  }
+});
+
+router.post("/resend-verification", authenticate, async (req, res, next) => {
+  try {
+    await authService.resendVerification(req.userId!);
+    res.json({ success: true, message: "Correo de verificación enviado" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Complete profile after OAuth sign-up
 const completeProfileSchema = z.object({
   firstName: z.string().min(1),
