@@ -25,15 +25,14 @@ router.patch("/password", authenticate, validate(changePasswordSchema), ctrl.cha
 router.patch("/avatar", authenticate, upload.single("avatar"), ctrl.uploadAvatar);
 
 // Email verification
-router.get("/verify-email", async (req, res, next) => {
+router.get("/verify-email", async (req, res) => {
   try {
     const token = req.query.token as string;
     if (!token) throw new Error("Token requerido");
     await authService.verifyEmail(token);
-    res.redirect(`${(await import("../config/env")).env.FRONTEND_URL}/verificar-email?success=true`);
+    res.redirect(`${env.FRONTEND_URL}/verificar-email?success=true`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error";
-    const { env } = await import("../config/env");
     res.redirect(`${env.FRONTEND_URL}/verificar-email?error=${encodeURIComponent(msg)}`);
   }
 });

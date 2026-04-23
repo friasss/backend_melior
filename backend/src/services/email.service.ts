@@ -6,7 +6,7 @@ const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 export async function sendVerificationEmail(to: string, firstName: string, token: string) {
   if (!resend) return;
 
-  const url = `${env.FRONTEND_URL}/verificar-email?token=${token}`;
+  const url = `${env.API_URL}/api/auth/verify-email?token=${token}`;
 
   await resend.emails.send({
     from: env.FROM_EMAIL,
