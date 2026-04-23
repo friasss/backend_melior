@@ -82,6 +82,7 @@ export class DashboardService {
         select: {
           id: true, title: true, price: true, currency: true, status: true,
           listingStatus: true, propertyType: true, viewCount: true, createdAt: true,
+          isFeatured: true,
           images: { where: { isPrimary: true }, take: 1, select: { url: true } },
           _count: { select: { favorites: true } },
           agent: { include: { user: { select: { firstName: true, lastName: true } } } },
@@ -151,7 +152,7 @@ export class DashboardService {
         id: p.id, title: p.title, price: p.price, currency: p.currency,
         status: p.status, listingStatus: p.listingStatus,
         propertyType: p.propertyType, viewCount: p.viewCount,
-        createdAt: p.createdAt,
+        createdAt: p.createdAt, isFeatured: p.isFeatured,
         image: p.images[0]?.url ?? '',
         favorites: p._count.favorites,
         agentName: `${p.agent.user.firstName} ${p.agent.user.lastName}`,

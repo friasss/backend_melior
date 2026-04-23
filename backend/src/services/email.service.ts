@@ -87,7 +87,7 @@ export async function sendVerificationEmail(to: string, firstName: string, token
 }
 
 export async function sendPasswordResetCode(to: string, firstName: string, code: string) {
-  if (!resend) return;
+  if (!resend) throw new Error("Servicio de correo no configurado. Contacta al administrador.");
 
   await resend.emails.send({
     from: env.FROM_EMAIL,
