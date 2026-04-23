@@ -32,6 +32,15 @@ const completeProfileSchema = z.object({
   role: z.enum(["CLIENT", "AGENT"]),
 });
 
+router.post("/upgrade-to-agent", authenticate, async (req, res, next) => {
+  try {
+    const result = await authService.upgradeToAgent(req.userId!);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/complete-profile", authenticate, async (req, res, next) => {
   try {
     const data = completeProfileSchema.parse(req.body);

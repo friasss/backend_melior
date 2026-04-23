@@ -182,6 +182,23 @@ export class AuthService {
     return user;
   }
 
+  async upgradeToAgent(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { agent: true } });
+    if (!user) throw ApiError.notFound("Usuario no encontrado");
+    if (user.role !== "CLIENT") throw ApiError.badRequest("Solo los clientes pueden convertirse en agentes");
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: "AGENT",
+        ...(!user.agent ? { agent: { create: { company: "Melior Properties" } } } : {}),
+      } as any,
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true, avatarUrl: true, role: true, createdAt: true },
+    });
+    const tokens = await this.createTokens({ userId: updated.id, role: updated.role });
+    return { user: updated, ...tokens };
+  }
+
   async updateProfile(userId: string, data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) {
     const user = await prisma.user.update({
       where: { id: userId },
