@@ -1,14 +1,18 @@
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 import { env } from "../config/env";
 
-const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
+const SENDGRID_API_KEY = env.SENDGRID_API_KEY;
+
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+}
 
 export async function sendVerificationEmail(to: string, firstName: string, token: string) {
-  if (!resend) return;
+  if (!SENDGRID_API_KEY) return;
 
   const url = `${env.API_URL}/api/auth/verify-email?token=${token}`;
 
-  await resend.emails.send({
+  await sgMail.send({
     from: env.FROM_EMAIL,
     to,
     subject: "Verifica tu correo en Melior",
@@ -87,9 +91,9 @@ export async function sendVerificationEmail(to: string, firstName: string, token
 }
 
 export async function sendPasswordResetCode(to: string, firstName: string, code: string) {
-  if (!resend) throw new Error("Servicio de correo no configurado. Contacta al administrador.");
+  if (!SENDGRID_API_KEY) throw new Error("Servicio de correo no configurado. Contacta al administrador.");
 
-  await resend.emails.send({
+  await sgMail.send({
     from: env.FROM_EMAIL,
     to,
     subject: `Tu código de recuperación: ${code} — Melior`,
@@ -142,11 +146,11 @@ export async function sendPasswordResetCode(to: string, firstName: string, code:
 }
 
 export async function sendPasswordResetEmail(to: string, firstName: string, token: string) {
-  if (!resend) return;
+  if (!SENDGRID_API_KEY) return;
 
   const url = `${env.FRONTEND_URL}/reset-password?token=${token}`;
 
-  await resend.emails.send({
+  await sgMail.send({
     from: env.FROM_EMAIL,
     to,
     subject: "Restablecer contraseña — Melior",
