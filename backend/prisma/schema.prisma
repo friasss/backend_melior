@@ -31,8 +31,8 @@ model User {
   agent            AgentProfile?
   clientProfile    ClientProfile?
   favorites        Favorite[]
-  receivedMessages Message[]      @relation("ReceivedMessages")
-  sentMessages     Message[]      @relation("SentMessages")
+  sentMessages              Message[]                 @relation("SentMessages")
+  conversationParticipants  ConversationParticipant[]
   notifications    Notification[]
   refreshTokens    RefreshToken[]
   reviews          Review[]
@@ -137,16 +137,17 @@ model Property {
   agentId       String                   @map("agent_id")
   createdAt     DateTime                 @default(now()) @map("created_at")
   updatedAt     DateTime                 @updatedAt @map("updated_at")
-  appointments  Appointment[]
-  interests     ClientPropertyInterest[]
-  inquiries     ContactInquiry[]
-  favorites     Favorite[]
-  address       Address                  @relation(fields: [addressId], references: [id])
-  agent         AgentProfile             @relation(fields: [agentId], references: [id])
-  features      PropertyFeature[]
-  images        PropertyImage[]
-  reviews       Review[]
-  transactions  Transaction[]
+  appointments   Appointment[]
+  interests      ClientPropertyInterest[]
+  inquiries      ContactInquiry[]
+  favorites      Favorite[]
+  conversations  Conversation[]
+  address        Address                  @relation(fields: [addressId], references: [id])
+  agent          AgentProfile             @relation(fields: [agentId], references: [id])
+  features       PropertyFeature[]
+  images         PropertyImage[]
+  reviews        Review[]
+  transactions   Transaction[]
 
   @@index([status, listingStatus])
   @@index([propertyType])
@@ -246,18 +247,43 @@ model Payment {
   @@map("payments")
 }
 
-model Message {
-  id         String    @id @default(cuid())
-  senderId   String    @map("sender_id")
-  receiverId String    @map("receiver_id")
-  content    String
-  isRead     Boolean   @default(false) @map("is_read")
-  readAt     DateTime? @map("read_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  receiver   User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  sender     User      @relation("SentMessages", fields: [senderId], references: [id])
+model Conversation {
+  id           String                    @id @default(cuid())
+  propertyId   String?                   @map("property_id")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
+  property     Property?                 @relation(fields: [propertyId], references: [id])
+  messages     Message[]
+  participants ConversationParticipant[]
 
-  @@index([senderId, receiverId])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id")
+  userId         String       @map("user_id")
+  unreadCount    Int          @default(0) @map("unread_count")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id")
+  senderId       String       @map("sender_id")
+  content        String
+  isRead         Boolean      @default(false) @map("is_read")
+  readAt         DateTime?    @map("read_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@index([senderId])
   @@map("messages")
 }
 

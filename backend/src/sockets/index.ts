@@ -3,7 +3,7 @@ import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { JwtPayload } from "../types";
-import { messageService } from "../services/message.service";
+import { conversationService } from "../services/conversation.service";
 import { notificationService } from "../services/notification.service";
 
 // Map userId -> Set of socket IDs (one user can have multiple tabs/devices)
@@ -70,26 +70,29 @@ export function initializeSocket(httpServer: HttpServer) {
 
     // ─── Chat / Direct Message ───
 
-    socket.on("message:send", async (data: { receiverId: string; content: string }) => {
+    socket.on("message:send", async (data: { conversationId: string; content: string }) => {
       try {
-        const message = await messageService.send(userId, data.receiverId, data.content);
-
-        // Send to receiver in real-time
-        emitToUser(data.receiverId, "message:new", message);
-
-        // Acknowledge to sender
+        const message = await conversationService.sendMessage(userId, data.conversationId, data.content);
         socket.emit("message:sent", message);
       } catch (error: any) {
         socket.emit("message:error", { error: error.message });
       }
     });
 
-    socket.on("message:typing", (data: { receiverId: string }) => {
-      emitToUser(data.receiverId, "message:typing", { senderId: userId });
+    socket.on("message:typing", (data: { conversationId: string }) => {
+      socket.to(`conv:${data.conversationId}`).emit("message:typing", { senderId: userId });
     });
 
-    socket.on("message:stop-typing", (data: { receiverId: string }) => {
-      emitToUser(data.receiverId, "message:stop-typing", { senderId: userId });
+    socket.on("message:stop-typing", (data: { conversationId: string }) => {
+      socket.to(`conv:${data.conversationId}`).emit("message:stop-typing", { senderId: userId });
+    });
+
+    socket.on("conversation:join", (conversationId: string) => {
+      socket.join(`conv:${conversationId}`);
+    });
+
+    socket.on("conversation:leave", (conversationId: string) => {
+      socket.leave(`conv:${conversationId}`);
     });
 
     // ─── Notifications ───
