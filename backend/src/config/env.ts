@@ -33,9 +33,10 @@ const envSchema = z.object({
   API_URL: z.string().default("http://localhost:4000"),
   FRONTEND_URL: z.string().default("http://localhost:5173"),
 
-  // Email — SendGrid
-  SENDGRID_API_KEY: z.string().default(""),
+  // Email — Brevo (transactional)
+  BREVO_API_KEY: z.string().default(""),
   FROM_EMAIL: z.string().default("noreply@melior.app"),
+  FROM_NAME: z.string().default("Melior"),
 });
 
 const parsed = envSchema.safeParse(process.env);
