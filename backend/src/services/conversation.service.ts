@@ -33,25 +33,28 @@ export class ConversationService {
       orderBy: { conversation: { updatedAt: "desc" } },
     });
 
-    return participations.map((p) => {
-      const conv = p.conversation;
-      const otherParticipant = conv.participants.find((cp) => cp.userId !== userId);
-      const lastMsg = conv.messages[0] ?? null;
-      const prop = conv.property;
+    return participations
+      .map((p) => {
+        const conv = p.conversation;
+        const otherParticipant = conv.participants.find((cp) => cp.userId !== userId);
+        if (!otherParticipant?.user) return null;
+        const lastMsg = conv.messages[0] ?? null;
+        const prop = conv.property;
 
-      return {
-        id: conv.id,
-        otherUser: otherParticipant?.user ?? null,
-        property: prop
-          ? { id: prop.id, title: prop.title, image: prop.images[0]?.url ?? "" }
-          : null,
-        lastMessage: lastMsg
-          ? { content: lastMsg.content, createdAt: lastMsg.createdAt, senderId: lastMsg.senderId }
-          : null,
-        unreadCount: p.unreadCount,
-        updatedAt: conv.updatedAt,
-      };
-    });
+        return {
+          id: conv.id,
+          otherUser: otherParticipant.user,
+          property: prop
+            ? { id: prop.id, title: prop.title, image: prop.images[0]?.url ?? "" }
+            : null,
+          lastMessage: lastMsg
+            ? { content: lastMsg.content, createdAt: lastMsg.createdAt, senderId: lastMsg.senderId }
+            : null,
+          unreadCount: p.unreadCount,
+          updatedAt: conv.updatedAt,
+        };
+      })
+      .filter((c): c is NonNullable<typeof c> => c !== null);
   }
 
   async getConversationMessages(userId: string, conversationId: string) {
@@ -129,6 +132,7 @@ export class ConversationService {
       include: { agent: { select: { userId: true } } },
     });
     if (!property) throw ApiError.notFound("Propiedad no encontrada");
+    if (!property.agent) throw ApiError.badRequest("Esta propiedad no tiene un agente asignado");
 
     const agentUserId = property.agent.userId;
     if (agentUserId === userId) throw ApiError.badRequest("No puedes iniciar una conversación contigo mismo");
