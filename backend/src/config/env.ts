@@ -33,9 +33,9 @@ const envSchema = z.object({
   API_URL: z.string().default("http://localhost:4000"),
   FRONTEND_URL: z.string().default("http://localhost:5173"),
 
-  // Email — Resend
-  RESEND_API_KEY: z.string().default(""),
-  FROM_EMAIL: z.string().default("onboarding@resend.dev"),
+  // Email — SendGrid
+  SENDGRID_API_KEY: z.string().default(""),
+  FROM_EMAIL: z.string().default("noreply@melior.app"),
 });
 
 const parsed = envSchema.safeParse(process.env);
